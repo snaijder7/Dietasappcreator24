@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dietas 2.6 Tsj</title>
+<style>
+  body { font-family: Arial; text-align: center; margin: 20px; }
+  button { margin: 6px; padding: 8px 14px; border: none; border-radius: 6px; background-color: #007bff; color: #fff; cursor: pointer; }
+  input, textarea { margin: 6px; padding: 6px; width: 80%; max-width: 300px; }
+  table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+  th, td { border: 1px solid #ccc; padding: 6px; }
+  .hidden { display: none; }
+  #calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 10px; }
+  .day { border: 1px solid #ccc; border-radius: 6px; padding: 8px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<h2>🚛 Dietas 2.6 Tsj</h2>
+
+<!-- LOGIN / REGISTRO -->
+<div id="loginBox">
+  <h3>🔐 Inicio de sesión</h3>
+  <input id="loginUser" placeholder="Usuario"><br>
+  <input id="loginPass" type="password" placeholder="Contraseña"><br>
+  <button onclick="login()">Entrar</button><br>
+  <small><a href="#" onclick="mostrarRegistro()">Crear cuenta nueva</a></small>
+</div>
+
+<div id="registerBox" class="hidden">
+  <h3>🆕 Registro</h3>
+  <input id="regUser" placeholder="Nuevo usuario"><br>
+  <input id="regPass" type="password" placeholder="Contraseña"><br>
+  <button onclick="registrar()">Registrar</button><br>
+  <small><a href="#" onclick="mostrarLogin()">Ya tengo cuenta</a></small>
+</div>
+
+<!-- CALENDARIO -->
+<div id="calendarioBox" class="hidden">
+  <h3>📅 Registro de Dietas</h3>
+  <div id="calendar"></div>
+  <div id="formulario"></div>
+  <button onclick="verPanel()">Ir al Panel Master</button>
+  <button onclick="cerrarSesion()">Cerrar sesión</button>
+</div>
+
+<!-- PANEL MASTER -->
+<div id="panelBox" class="hidden">
+  <h3>Panel Master - Gestión de Usuarios y Dietas</h3>
+  <div id="panel"></div>
+  <div id="userAdmin"></div>
+  <button onclick="volverCalendario()">Volver al Calendario</button>
+</div>
+
+<script>
+if(!localStorage.getItem('usuarios'))
+  localStorage.setItem('usuarios', JSON.stringify([{user:'Dietas 2.6',pass:'',rol:'master'}]));
+
+function mostrarRegistro(){ loginBox.classList.add('hidden'); registerBox.classList.remove('hidden'); }
+function mostrarLogin(){ registerBox.classList.add('hidden'); loginBox.classList.remove('hidden'); }
+
+function login(){
+  let u=loginUser.value.trim(), p=loginPass.value.trim();
+  let usuarios=JSON.parse(localStorage.getItem('usuarios'))||[];
+  let user=usuarios.find(x=>x.user===u && x.pass===p);
+  if(user){
+    if(user.pass===''){ let np=prompt('Primera vez: establece tu contraseña'); user.pass=np; localStorage.setItem('usuarios',JSON.stringify(usuarios)); }
+    localStorage.setItem('usuarioActual',u);
+    localStorage.setItem('rolActual',user.rol);
+    alert('Bienvenido '+u);
+    loginBox.classList.add('hidden');
+    if(user.rol==='master') document.getElementById('panelBox').classList.remove('hidden');
+    else document.getElementById('calendarioBox').classList.remove('hidden');
+    generarCalendario();
+  } else alert('Usuario o contraseña incorrectos');
+}
+
+function registrar(){
+  let u=regUser.value.trim(), p=regPass.value.trim();
+  if(!u||!p){alert('Completa todos los campos');return;}
+  let usuarios=JSON.parse(localStorage.getItem('usuarios'))||[];
+  if(usuarios.find(x=>x.user===u)){alert('Usuario ya existe');return;}
+  usuarios.push({user:u,pass:p,rol:'conductor'});
+  localStorage.setItem('usuarios',JSON.stringify(usuarios));
+  alert('Usuario creado correctamente. Inicia sesión.');
+  mostrarLogin();
+}
+
+function cerrarSesion(){
+  localStorage.removeItem('usuarioActual');
+  localStorage.removeItem('rolActual');
+  location.reload();
+}
+
+let user=localStorage.getItem('usuarioActual')||'';
+let fechaActual=new Date();
+let mesActual=fechaActual.getMonth()+1;
+let añoActual=fechaActual.getFullYear();
+let mesesNombres=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+function generarCalendario(){
+  if(!document.getElementById('calendar')) return;
+  const cal=document.getElementById('calendar');
+  cal.innerHTML='';
+  let firstDay=new Date(añoActual,mesActual-1,1).getDay();
+  let daysInMonth=new Date(añoActual,mesActual,0).getDate();
+  for(let i=0;i<firstDay;i++){let e=document.createElement('div');cal.appendChild(e);}
+  for(let d=1;d<=daysInMonth;d++){
+    let div=document.createElement('div');
+    div.textContent=d;
+    div.className='day';
+    let fechaKey=añoActual+'-'+String(mesActual).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    if(esHoy(d)) div.style.backgroundColor='#add8e6';
+    let registro=obtenerRegistro(fechaKey);
+    if(registro) div.style.backgroundColor='#90ee90';
+    div.onclick=()=>abrirFormulario(fechaKey);
+    cal.appendChild(div);
+  }
+}
+function esHoy(d){let h=new Date();return h.getDate()===d&&h.getMonth()+1===mesActual;}
+
+function abrirFormulario(fecha){
+  let dietas=['Internacional','Nacional','Media Internacional','Media Nacional'];
+  let formHTML='<h4>'+fecha+'</h4><form id="formDieta">';
+  dietas.forEach(d=>{formHTML+='<label><input type="checkbox" name="dieta" value="'+d+'"> '+d+'</label><br>';});
+  formHTML+='<label>Varios (€ conductor): <input type="number" step="0.01" id="varios"></label><br>';
+  formHTML+='<label>Comentario:</label><br><textarea id="comentario" rows="2" style="width:100%;"></textarea><br>';
+  formHTML+='<button type="button" onclick="guardarRegistro(\''+fecha+'\')">Guardar</button></form>';
+  document.getElementById('formulario').innerHTML=formHTML;
+  let registro=obtenerRegistro(fecha);
+  if(registro){
+    registro.dieta.forEach(v=>{
+      let chk=document.querySelector('input[value="'+v+'"]');
+      if(chk) chk.checked=true;
+    });
+    document.getElementById('varios').value=registro.varios||'';
+    document.getElementById('comentario').value=registro.comentario||'';
+  }
+}
+
+function guardarRegistro(fecha){
+  let storageKey='dietas_'+añoActual+'_'+String(mesActual).padStart(2,'0');
+  let da
